@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HabitFlow – Habit Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0d1a; --surface: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.09);
+    --text: #e2e8f0; --muted: rgba(226,232,240,0.45); --faded: rgba(226,232,240,0.2);
+    --input-bg: #0d0d1e; --input-border: rgba(255,255,255,0.1);
+    --stat-bg: rgba(255,255,255,0.05); --stat-border: rgba(255,255,255,0.08);
+    --divider: rgba(255,255,255,0.06); --dashed: rgba(255,255,255,0.12);
+    --header-bg: rgba(13,13,26,0.93); --header-border: rgba(255,255,255,0.07);
+    --shadow: 0 4px 28px rgba(0,0,0,0.35); --shadow-hover: 0 8px 44px rgba(0,0,0,0.5);
+    --modal-bg: #16162a; --modal-shadow: 0 32px 80px rgba(0,0,0,0.5);
+  }
+  body.light {
+    --bg: #eef2f7; --surface: #ffffff; --border: rgba(0,0,0,0.08);
+    --text: #1e293b; --muted: rgba(30,41,59,0.5); --faded: rgba(30,41,59,0.2);
+    --input-bg: #f8fafc; --input-border: #e2e8f0;
+    --stat-bg: rgba(0,0,0,0.04); --stat-border: rgba(0,0,0,0.07);
+    --divider: rgba(0,0,0,0.06); --dashed: rgba(0,0,0,0.12);
+    --header-bg: rgba(238,242,247,0.93); --header-border: rgba(0,0,0,0.08);
+    --shadow: 0 4px 20px rgba(0,0,0,0.08); --shadow-hover: 0 8px 36px rgba(0,0,0,0.13);
+    --modal-bg: #ffffff; --modal-shadow: 0 25px 60px rgba(0,0,0,0.2);
+  }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; transition: background 0.3s, color 0.3s;
+  }
+  input[type=date]::-webkit-calendar-picker-indicator { opacity: 0.5; }
+  body:not(.light) input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); }
+
+  /* ── Header ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--header-bg); backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--header-border); padding: 0 20px;
+  }
+  .header-inner {
+    max-width: 860px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; height: 60px;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: linear-gradient(135deg,#22c55e,#16a34a);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 12px #22c55e55;
+  }
+  .logo-icon svg { width: 14px; height: 14px; }
+  .logo-text { font-size: 18px; font-weight: 800; font-family: 'Playfair Display', serif; }
+  .habit-count {
+    font-size: 12px; color: var(--muted); font-weight: 600;
+    background: var(--stat-bg); border-radius: 20px; padding: 2px 9px;
+  }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .header-stats { display: flex; gap: 14px; margin-right: 2px; }
+  .header-stat { text-align: center; }
+  .header-stat-val { font-size: 16px; font-weight: 800; line-height: 1; }
+  .header-stat-lbl { font-size: 9px; color: var(--muted); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+  .btn-icon {
+    background: var(--stat-bg); border: none; cursor: pointer; color: var(--text);
+    padding: 8px 10px; border-radius: 10px; display: flex; align-items: center; transition: background 0.2s;
+  }
+  .btn-icon svg { width: 15px; height: 15px; }
+  .btn-primary {
+    background: #22c55e; border: none; cursor: pointer; color: #fff;
+    padding: 9px 16px; border-radius: 12px; display: flex; align-items: center; gap: 6px;
+    font-weight: 700; font-size: 13px; font-family: inherit;
+    box-shadow: 0 4px 14px #22c55e55; transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-primary:hover { transform: scale(1.04); box-shadow: 0 6px 22px #22c55e70; }
+  .btn-primary svg { width: 13px; height: 13px; }
+
+  /* ── Main ── */
+  main { max-width: 860px; margin: 0 auto; padding: 28px 20px 72px; }
+
+  /* ── Empty State ── */
+  .empty { text-align: center; padding: 80px 20px; }
+  .empty-emoji { font-size: 54px; margin-bottom: 14px; filter: drop-shadow(0 4px 14px rgba(34,197,94,0.5)); }
+  .empty h2 { font-family: 'Playfair Display', serif; font-size: 27px; font-weight: 700; margin-bottom: 10px; }
+  .empty p { color: var(--muted); font-size: 15px; line-height: 1.75; max-width: 320px; margin: 0 auto 28px; }
+  .btn-primary-lg {
+    background: #22c55e; border: none; cursor: pointer; color: #fff;
+    padding: 14px 30px; border-radius: 14px; display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 700; font-size: 15px; font-family: inherit; box-shadow: 0 6px 24px #22c55e55;
+  }
+  .btn-primary-lg svg { width: 15px; height: 15px; }
+
+  /* ── Habits List ── */
+  #habits-list { display: flex; flex-direction: column; gap: 18px; }
+
+  /* ── Add More Btn ── */
+  .btn-add-more {
+    border: 2px dashed var(--dashed); background: none; border-radius: 18px;
+    padding: 18px; cursor: pointer; color: var(--muted); font-family: inherit;
+    font-weight: 600; font-size: 14px; display: flex; align-items: center;
+    justify-content: center; gap: 8px; transition: border-color 0.2s, color 0.2s; width: 100%;
+  }
+  .btn-add-more:hover { border-color: #22c55e; color: #22c55e; }
+  .btn-add-more svg { width: 15px; height: 15px; }
+
+  /* ── Habit Card ── */
+  .habit-card {
+    background: var(--surface); border-radius: 22px; border: 1px solid var(--border);
+    overflow: hidden; box-shadow: var(--shadow); transition: box-shadow 0.2s;
+  }
+  .habit-card:hover { box-shadow: var(--shadow-hover); }
+  .habit-accent-bar { height: 4px; }
+  .habit-body { padding: 22px 22px 0; }
+  .habit-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .habit-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .habit-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .habit-name { font-size: 17px; font-weight: 700; font-family: 'Playfair Display', serif; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .habit-dates { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .habit-date-item { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+  .habit-date-item svg { width: 10px; height: 10px; }
+  .habit-end-date { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .habit-end-date svg { width: 10px; height: 10px; }
+  .days-badge { border-radius: 5px; padding: 1px 5px; font-size: 10px; font-weight: 700; }
+  .habit-actions { display: flex; gap: 4px; margin-left: 8px; }
+  .btn-action {
+    background: none; border: none; cursor: pointer; color: var(--text);
+    opacity: 0.3; padding: 7px; border-radius: 8px; display: flex; transition: opacity 0.2s, color 0.2s;
+  }
+  .btn-action:hover { opacity: 1; }
+  .btn-edit:hover { color: inherit; }
+  .btn-delete:hover { color: #ef4444 !important; }
+  .btn-collapse { transition: opacity 0.2s, transform 0.3s; }
+  .btn-collapse svg { width: 15px; height: 15px; }
+  .btn-action svg { width: 15px; height: 15px; }
+
+  /* ── Stats ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 16px; }
+  .stat-pill {
+    background: var(--stat-bg); border: 1px solid var(--stat-border);
+    border-radius: 14px; padding: 13px 12px; display: flex; flex-direction: column; gap: 3px;
+  }
+  .stat-icon { margin-bottom: 2px; }
+  .stat-icon svg { width: 12px; height: 12px; }
+  .stat-val { font-size: 21px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat-lbl { font-size: 10px; color: var(--text); opacity: 0.45; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+
+  /* ── Progress ── */
+  .progress-wrap { margin-bottom: 16px; }
+  .progress-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+  .progress-label { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .progress-pct { font-size: 10px; font-weight: 800; }
+  .progress-track { height: 5px; border-radius: 99px; background: var(--divider); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.9s cubic-bezier(0.4,0,0.2,1); }
+
+  /* ── Calendar Section ── */
+  .calendar-section { overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1); }
+  .calendar-inner { padding: 0 16px 22px; overflow: hidden; }
+  .calendar-divider { height: 1px; background: var(--divider); margin-bottom: 18px; }
+
+  /* ── Calendar ── */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-nav-btn {
+    background: none; border: none; cursor: pointer; color: var(--text);
+    opacity: 0.55; padding: 7px; border-radius: 8px; display: flex; transition: opacity 0.2s;
+  }
+  .cal-nav-btn:hover { opacity: 1; }
+  .cal-nav-btn svg { width: 16px; height: 16px; }
+  .cal-title { font-weight: 700; font-size: 14px; font-family: 'Playfair Display', serif; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 3px; width: 100%; }
+  .cal-day-header { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .05em; padding: 3px 0 4px; margin-bottom: 1px; }
+  .cal-cell {
+    aspect-ratio: 1; border-radius: 50%; border: 2px solid transparent;
+    background: transparent; color: var(--text); font-size: 11px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.18s cubic-bezier(0.34,1.56,0.64,1); font-family: inherit;
+    min-width: 0; width: 100%;
+  }
+  .cal-cell.future, .cal-cell.out-of-range { color: var(--faded); cursor: default; }
+  .cal-cell.out-of-range { opacity: 0.35; text-decoration: line-through; }
+  .cal-cell.today-unmarked { font-weight: 700; }
+  .cal-cell.done { color: #fff; }
+  .cal-cell.done svg { width: 10px; height: 10px; }
+  .cal-cell:not(.future):not(.out-of-range):not(.done):hover { transform: scale(1.18); }
+  .cal-cell.empty { background: none; border: none; cursor: default; pointer-events: none; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 0 16px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: var(--modal-bg); border-radius: 22px; padding: 30px;
+    width: min(460px,100%); box-shadow: var(--modal-shadow); border: 1px solid var(--input-border);
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .modal-title { font-size: 21px; font-weight: 700; font-family: 'Playfair Display', serif; }
+  .btn-close { background: none; border: none; cursor: pointer; color: var(--text); opacity: 0.5; padding: 4px; display: flex; }
+  .btn-close svg { width: 19px; height: 19px; }
+  .form-label { display: block; margin-bottom: 15px; }
+  .form-label-text { font-size: 11px; font-weight: 700; color: var(--text); opacity: 0.55; display: block; margin-bottom: 7px; letter-spacing: .08em; text-transform: uppercase; }
+  .form-input {
+    width: 100%; padding: 11px 14px; border-radius: 11px;
+    border: 1.5px solid var(--input-border); background: var(--input-bg);
+    color: var(--text); font-size: 14px; outline: none; font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: #22c55e; }
+  .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+  .color-picker { margin-bottom: 26px; }
+  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .color-swatch {
+    width: 33px; height: 33px; border-radius: 50%; cursor: pointer;
+    border: 3px solid transparent; transition: transform 0.15s, border-color 0.15s;
+  }
+  .color-swatch.selected { transform: scale(1.2); }
+  .modal-actions { display: flex; gap: 10px; }
+  .btn-cancel {
+    flex: 1; padding: 12px; border-radius: 11px; border: 1.5px solid var(--input-border);
+    background: none; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .btn-save {
+    flex: 2; padding: 12px; border-radius: 11px; border: none;
+    color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 7px; transition: opacity 0.2s;
+  }
+  .btn-save:hover { opacity: 0.88; }
+  .btn-save svg { width: 15px; height: 15px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: repeat(2,1fr); }
+    .header-stats { display: none; }
+    .stat-val { font-size: 18px; }
+    .habit-name { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG Icons (hidden, referenced via use) -->
+<svg style="display:none">
+  <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <symbol id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></symbol>
+  <symbol id="ic-chevl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></symbol>
+  <symbol id="ic-chevr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="ic-flame" viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4.97 0-9-4.03-9-9 0-4.56 3.36-8.5 8-9.38V2l5 5-5 5V9.07C8.2 9.93 6 12.27 6 15c0 3.31 2.69 6 6 6s6-2.69 6-6c0-1.77-.78-3.37-2-4.47V8.09C18.6 9.76 21 12.72 21 15c0 4.97-4.03 9-9 9z"/></symbol>
+  <symbol id="ic-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="ic-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="ic-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+</svg>
+
+<!-- Header -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg><use href="#ic-check"/></svg>
+      </div>
+      <span class="logo-text">HabitFlow</span>
+      <span class="habit-count" id="habit-count-badge" style="display:none"></span>
+    </div>
+    <div class="header-right">
+      <div class="header-stats" id="header-stats" style="display:none">
+        <div class="header-stat">
+          <div class="header-stat-val" id="total-completions">0</div>
+          <div class="header-stat-lbl">Total</div>
+        </div>
+        <div class="header-stat">
+          <div class="header-stat-val" id="total-streaks">0</div>
+          <div class="header-stat-lbl">Streaks</div>
+        </div>
+      </div>
+      <button class="btn-icon" id="theme-toggle" title="Toggle theme">
+        <svg><use href="#ic-sun" id="theme-icon"/></svg>
+      </button>
+      <button class="btn-primary" id="btn-new-habit">
+        <svg><use href="#ic-plus"/></svg> New Habit
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Main -->
+<main>
+  <!-- Empty State -->
+  <div class="empty" id="empty-state">
+    <div class="empty-emoji">🌱</div>
+    <h2>Build Better Habits</h2>
+    <p>Add your first habit, set a goal date, and start tracking your daily progress.</p>
+    <button class="btn-primary-lg" id="btn-first-habit">
+      <svg><use href="#ic-plus"/></svg> Create First Habit
+    </button>
+  </div>
+
+  <!-- Habits List -->
+  <div id="habits-list" style="display:none"></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">New Habit</h2>
+      <button class="btn-close" id="modal-close"><svg><use href="#ic-close"/></svg></button>
+    </div>
+    <label class="form-label">
+      <span class="form-label-text">Habit Name</span>
+      <input class="form-input" type="text" id="habit-name" placeholder="e.g. Drink Warm Water Every Morning"/>
+    </label>
+    <div class="date-row">
+      <label class="form-label" style="margin-bottom:0">
+        <span class="form-label-text">Start Date</span>
+        <input class="form-input" type="date" id="habit-start"/>
+      </label>
+      <label class="form-label" style="margin-bottom:0">
+        <span class="form-label-text">Goal / End Date <span style="opacity:.5;text-transform:none;letter-spacing:0;font-weight:500">(optional)</span></span>
+        <input class="form-input" type="date" id="habit-end"/>
+      </label>
+    </div>
+    <div class="color-picker" style="margin-top:15px">
+      <span class="form-label-text">Color</span>
+      <div class="color-swatches" id="color-swatches"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="modal-cancel">Cancel</button>
+      <button class="btn-save" id="modal-save">
+        <svg><use href="#ic-plus" id="save-icon"/></svg>
+        <span id="save-label">Add Habit</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const COLORS = ["#22c55e","#3b82f6","#f59e0b","#ef4444","#8b5cf6","#ec4899","#14b8a6","#f97316"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const LS_KEY = "ht-habits-v2";
+const LS_DARK = "ht-dark-v2";
+
+// ── State ──────────────────────────────────────────────────────────────────
+let habits = [];
+let dark = true;
+let editId = null;
+let selectedColor = COLORS[0];
+
+// calendar view state per habit
+const calViews = {}; // { habitId: { year, month } }
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function pad(n) { return String(n).padStart(2,"0"); }
+function dateKey(y,m,d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+function daysInMonth(y,m) { return new Date(y,m+1,0).getDate(); }
+function firstDay(y,m) { return new Date(y,m,1).getDay(); }
+function fmtDate(ds) {
+  if (!ds) return null;
+  return new Date(ds+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+function calcStats(habit) {
+  const sorted = [...habit.completedDates].sort();
+  const total = sorted.length;
+  if (!total) return { total:0, current:0, longest:0, pct:0, daysLeft:null };
+
+  let longest=1, run=1;
+  for (let i=1;i<sorted.length;i++) {
+    const diff=(new Date(sorted[i])-new Date(sorted[i-1]))/86400000;
+    if (diff===1){run++;longest=Math.max(longest,run);}else run=1;
+  }
+
+  const today=new Date(todayStr());
+  const set=new Set(sorted);
+  let streak=0;
+  const chk=new Date(today);
+  while(true){
+    const k=`${chk.getFullYear()}-${pad(chk.getMonth()+1)}-${pad(chk.getDate())}`;
+    if(set.has(k)){streak++;chk.setDate(chk.getDate()-1);}else break;
+  }
+
+  const start=new Date(habit.startDate);
+  const end=habit.endDate?new Date(Math.min(new Date(habit.endDate),today)):today;
+  const span=Math.max(1,Math.floor((end-start)/86400000)+1);
+  const pct=Math.min(100,Math.round((total/span)*100));
+
+  let daysLeft=null;
+  if(habit.endDate){
+    daysLeft=Math.ceil((new Date(habit.endDate)-today)/86400000);
+  }
+  return {total,current:streak,longest,pct,daysLeft};
+}
+
+function save() { localStorage.setItem(LS_KEY,JSON.stringify(habits)); }
+function load() {
+  try { habits=JSON.parse(localStorage.getItem(LS_KEY)||"[]"); }
+  catch { habits=[]; }
+  dark = localStorage.getItem(LS_DARK) !== "false";
+}
+
+// ── Theme ──────────────────────────────────────────────────────────────────
+function applyTheme() {
+  document.body.classList.toggle("light",!dark);
+  document.getElementById("theme-icon").setAttribute("href", dark?"#ic-sun":"#ic-moon");
+}
+
+// ── Color Swatches ─────────────────────────────────────────────────────────
+function renderSwatches() {
+  const container = document.getElementById("color-swatches");
+  container.innerHTML = "";
+  COLORS.forEach(c => {
+    const btn = document.createElement("button");
+    btn.className = "color-swatch" + (selectedColor===c?" selected":"");
+    btn.style.background = c;
+    btn.style.borderColor = selectedColor===c ? "var(--text)" : "transparent";
+    btn.addEventListener("click",()=>{
+      selectedColor=c;
+      renderSwatches();
+      document.getElementById("modal-save").style.background=c;
+      document.getElementById("modal-save").style.boxShadow=`0 4px 16px ${c}55`;
+    });
+    container.appendChild(btn);
+  });
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openModal(habit=null) {
+  editId = habit ? habit.id : null;
+  document.getElementById("modal-title").textContent = habit ? "Edit Habit" : "New Habit";
+  document.getElementById("save-label").textContent = habit ? "Save Changes" : "Add Habit";
+  document.getElementById("save-icon").setAttribute("href", habit?"#ic-check":"#ic-plus");
+  document.getElementById("habit-name").value = habit ? habit.name : "";
+  document.getElementById("habit-start").value = habit ? habit.startDate : todayStr();
+  document.getElementById("habit-end").value = habit ? (habit.endDate||"") : "";
+  selectedColor = habit ? habit.color : COLORS[0];
+  renderSwatches();
+  const saveBtn = document.getElementById("modal-save");
+  saveBtn.style.background = selectedColor;
+  saveBtn.style.boxShadow = `0 4px 16px ${selectedColor}55`;
+  document.getElementById("modal").classList.remove("hidden");
+  setTimeout(()=>document.getElementById("habit-name").focus(),100);
+}
+function closeModal() { document.getElementById("modal").classList.add("hidden"); editId=null; }
+
+function saveHabit() {
+  const name = document.getElementById("habit-name").value.trim();
+  if (!name) { document.getElementById("habit-name").focus(); return; }
+  const startDate = document.getElementById("habit-start").value || todayStr();
+  const endDate = document.getElementById("habit-end").value || null;
+
+  if (editId) {
+    habits = habits.map(h => h.id===editId ? {...h,name,startDate,endDate,color:selectedColor} : h);
+  } else {
+    habits.push({ id:uid(), name, startDate, endDate, color:selectedColor, completedDates:[] });
+  }
+  save(); closeModal(); renderAll();
+}
+
+// ── Toggle Date ────────────────────────────────────────────────────────────
+function toggleDate(habitId, dateStr) {
+  habits = habits.map(h => {
+    if (h.id!==habitId) return h;
+    const has = h.completedDates.includes(dateStr);
+    return {...h, completedDates: has ? h.completedDates.filter(d=>d!==dateStr) : [...h.completedDates,dateStr]};
+  });
+  save();
+  // re-render just the calendar for this habit
+  renderCalendarFor(habitId);
+  renderStatsFor(habitId);
+  renderHeader();
+}
+
+function deleteHabit(id) {
+  if (!confirm("Delete this habit and all its data?")) return;
+  habits = habits.filter(h=>h.id!==id);
+  delete calViews[id];
+  save(); renderAll();
+}
+
+// ── Render Header ──────────────────────────────────────────────────────────
+function renderHeader() {
+  const totalDays = habits.reduce((s,h)=>s+h.completedDates.length,0);
+  const totalStreaks = habits.reduce((s,h)=>s+calcStats(h).current,0);
+  const badge = document.getElementById("habit-count-badge");
+  const statsEl = document.getElementById("header-stats");
+  if (habits.length) {
+    badge.textContent = `${habits.length} habit${habits.length!==1?"s":""}`;
+    badge.style.display="";
+    statsEl.style.display="flex";
+    document.getElementById("total-completions").textContent=totalDays;
+    document.getElementById("total-streaks").textContent=totalStreaks;
+  } else {
+    badge.style.display="none";
+    statsEl.style.display="none";
+  }
+}
+
+// ── Render Stats for a habit ───────────────────────────────────────────────
+function renderStatsFor(habitId) {
+  const habit = habits.find(h=>h.id===habitId);
+  if (!habit) return;
+  const stats = calcStats(habit);
+  const card = document.querySelector(`[data-habit-id="${habitId}"]`);
+  if (!card) return;
+  card.querySelector(".stat-total").textContent = stats.total;
+  card.querySelector(".stat-current").textContent = stats.current;
+  card.querySelector(".stat-longest").textContent = stats.longest;
+  card.querySelector(".stat-pct").textContent = stats.pct+"%";
+  card.querySelector(".progress-pct").textContent = stats.pct+"%";
+  card.querySelector(".progress-fill").style.width = stats.pct+"%";
+  renderHeader();
+}
+
+// ── Build Calendar HTML ────────────────────────────────────────────────────
+function buildCalendarHTML(habit, year, month) {
+  const today = todayStr();
+  const num = daysInMonth(year,month);
+  const first = firstDay(year,month);
+  const completedSet = new Set(habit.completedDates);
+
+  let html = `<div class="cal-nav">
+    <button class="cal-nav-btn" onclick="prevMonth('${habit.id}')"><svg width="16" height="16"><use href="#ic-chevl"/></svg></button>
+    <span class="cal-title">${MONTHS[month]} ${year}</span>
+    <button class="cal-nav-btn" onclick="nextMonth('${habit.id}')"><svg width="16" height="16"><use href="#ic-chevr"/></svg></button>
+  </div>
+  <div class="cal-grid">`;
+
+  DAYS.forEach(d=>{ html+=`<div class="cal-day-header">${d}</div>`; });
+  for(let i=0;i<first;i++) html+=`<div class="cal-cell empty"></div>`;
+
+  for(let d=1;d<=num;d++){
+    const key = dateKey(year,month,d);
+    const isToday = key===today;
+    const done = completedSet.has(key);
+    const isFuture = key>today;
+    const beforeStart = habit.startDate && key<habit.startDate;
+    const afterEnd = habit.endDate && key>habit.endDate;
+    const outOfRange = beforeStart||afterEnd;
+
+    let cls = "cal-cell";
+    if(done) cls+=" done";
+    else if(outOfRange) cls+=" out-of-range";
+    else if(isFuture) cls+=" future";
+    else if(isToday) cls+=" today-unmarked";
+
+    let style = `border-color:transparent;background:transparent;`;
+    if(done){ style=`background:${habit.color};border-color:transparent;color:#fff;`; }
+    else if(isToday&&!outOfRange){ style=`border-color:${habit.color};background:${habit.color}22;font-weight:700;`; }
+
+    const clickable = !isFuture && !outOfRange;
+    const onclick = clickable ? `onclick="toggleDate('${habit.id}','${key}')"` : "";
+    const hoverStyle = clickable&&!done ? `onmouseenter="this.style.transform='scale(1.18)';this.style.background='${habit.color}30'" onmouseleave="this.style.transform='scale(1)';this.style.background='${done?habit.color:(isToday?habit.color+'22':'transparent')}'"` : "";
+
+    const inner = done ? `<svg width="10" height="10"><use href="#ic-check"/></svg>` : d;
+    html += `<button class="${cls}" style="${style}" ${onclick} ${hoverStyle}>${inner}</button>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+// ── Render Calendar for habit ──────────────────────────────────────────────
+function renderCalendarFor(habitId) {
+  const habit = habits.find(h=>h.id===habitId);
+  if (!habit) return;
+  const view = calViews[habitId];
+  const container = document.querySelector(`[data-habit-id="${habitId}"] .cal-container`);
+  if (container) container.innerHTML = buildCalendarHTML(habit, view.year, view.month);
+}
+
+function prevMonth(habitId) {
+  const v = calViews[habitId];
+  if(v.month===0){v.month=11;v.year--;}else v.month--;
+  renderCalendarFor(habitId);
+}
+function nextMonth(habitId) {
+  const v = calViews[habitId];
+  if(v.month===11){v.month=0;v.year++;}else v.month++;
+  renderCalendarFor(habitId);
+}
+
+// ── Build Habit Card ───────────────────────────────────────────────────────
+function buildHabitCard(habit, index) {
+  const now = new Date();
+  if (!calViews[habit.id]) calViews[habit.id] = { year:now.getFullYear(), month:now.getMonth() };
+  const stats = calcStats(habit);
+  const v = calViews[habit.id];
+
+  let endDateHTML = "";
+  if (habit.endDate) {
+    let badgeHTML = "";
+    if (stats.daysLeft > 0) {
+      badgeHTML = `<span class="days-badge" style="background:${habit.color}20;color:${habit.color}">${stats.daysLeft}d left</span>`;
+    } else if (stats.daysLeft === 0) {
+      badgeHTML = `<span class="days-badge" style="background:#ef444420;color:#ef4444">Today!</span>`;
+    } else {
+      badgeHTML = `<span class="days-badge" style="background:rgba(120,120,120,0.15);color:var(--muted)">Ended</span>`;
+    }
+    endDateHTML = `
+      <span class="habit-date-item">→</span>
+      <span class="habit-end-date" style="color:${habit.color}">
+        <svg width="10" height="10"><use href="#ic-target"/></svg>
+        ${fmtDate(habit.endDate)} ${badgeHTML}
+      </span>`;
+  }
+
+  const calHTML = buildCalendarHTML(habit, v.year, v.month);
+
+  return `
+  <div class="habit-card" data-habit-id="${habit.id}" style="animation-delay:${index*0.06}s">
+    <div class="habit-accent-bar" style="background:linear-gradient(90deg,${habit.color},${habit.color}99);box-shadow:0 0 14px ${habit.color}80"></div>
+    <div class="habit-body">
+      <div class="habit-header">
+        <div style="flex:1;min-width:0">
+          <div class="habit-title-row">
+            <div class="habit-dot" style="background:${habit.color};box-shadow:0 0 6px ${habit.color}"></div>
+            <div class="habit-name">${escHtml(habit.name)}</div>
+          </div>
+          <div class="habit-dates">
+            <span class="habit-date-item">
+              <svg width="10" height="10"><use href="#ic-cal"/></svg>
+              ${fmtDate(habit.startDate)}
+            </span>
+            ${endDateHTML}
+          </div>
+        </div>
+        <div class="habit-actions">
+          <button class="btn-action btn-edit" style="color:var(--text)" onclick="openModal(habits.find(h=>h.id==='${habit.id}'))" title="Edit">✏️</button>
+          <button class="btn-action btn-delete" onclick="deleteHabit('${habit.id}')" title="Delete">
+            <svg><use href="#ic-trash"/></svg>
+          </button>
+          <button class="btn-action btn-collapse" id="collapse-btn-${habit.id}" onclick="toggleCollapse('${habit.id}')" title="Collapse">
+            <svg><use href="#ic-chevl"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-pill">
+          <div class="stat-icon" style="color:${habit.color}"><svg width="12" height="12"><use href="#ic-check"/></svg></div>
+          <div class="stat-val stat-total">${stats.total}</div>
+          <div class="stat-lbl">Total Days</div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-icon" style="color:${habit.color}"><svg width="12" height="12"><use href="#ic-flame"/></svg></div>
+          <div class="stat-val stat-current">${stats.current}</div>
+          <div class="stat-lbl">Current</div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-icon" style="color:${habit.color}"><svg width="12" height="12"><use href="#ic-flame"/></svg></div>
+          <div class="stat-val stat-longest">${stats.longest}</div>
+          <div class="stat-lbl">Best</div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-icon" style="color:${habit.color}"><svg width="12" height="12"><use href="#ic-target"/></svg></div>
+          <div class="stat-val stat-pct">${stats.pct}%</div>
+          <div class="stat-lbl">Rate</div>
+        </div>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-header">
+          <span class="progress-label">Completion Rate</span>
+          <span class="progress-pct" style="color:${habit.color}">${stats.pct}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:${stats.pct}%;background:linear-gradient(90deg,${habit.color}bb,${habit.color});box-shadow:0 0 8px ${habit.color}88"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="calendar-section" id="cal-section-${habit.id}" style="max-height:600px">
+      <div class="calendar-inner">
+        <div class="calendar-divider"></div>
+        <div class="cal-container">${calHTML}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Collapse Toggle ────────────────────────────────────────────────────────
+const collapseState = {}; // habitId -> collapsed bool
+function toggleCollapse(habitId) {
+  collapseState[habitId] = !collapseState[habitId];
+  const sec = document.getElementById(`cal-section-${habitId}`);
+  const btn = document.getElementById(`collapse-btn-${habitId}`);
+  if (collapseState[habitId]) {
+    sec.style.maxHeight = "0px";
+    btn.style.transform = "rotate(-90deg)";
+  } else {
+    sec.style.maxHeight = "600px";
+    btn.style.transform = "rotate(0deg)";
+  }
+}
+
+// ── Render All ─────────────────────────────────────────────────────────────
+function renderAll() {
+  const list = document.getElementById("habits-list");
+  const empty = document.getElementById("empty-state");
+
+  if (habits.length === 0) {
+    empty.style.display=""; list.style.display="none";
+  } else {
+    empty.style.display="none"; list.style.display="flex";
+    list.style.flexDirection="column"; list.style.gap="18px";
+    let html = habits.map((h,i)=>buildHabitCard(h,i)).join("");
+    // Add more button
+    html += `<button class="btn-add-more" onclick="openModal()">
+      <svg width="15" height="15"><use href="#ic-plus"/></svg> Add Another Habit
+    </button>`;
+    list.innerHTML = html;
+    // restore collapse states
+    Object.keys(collapseState).forEach(id=>{
+      if(collapseState[id]) {
+        const sec=document.getElementById(`cal-section-${id}`);
+        const btn=document.getElementById(`collapse-btn-${id}`);
+        if(sec){sec.style.maxHeight="0px";}
+        if(btn){btn.style.transform="rotate(-90deg)";}
+      }
+    });
+  }
+  renderHeader();
+}
+
+// ── Event Listeners ────────────────────────────────────────────────────────
+document.getElementById("btn-new-habit").addEventListener("click",()=>openModal());
+document.getElementById("btn-first-habit").addEventListener("click",()=>openModal());
+document.getElementById("modal-close").addEventListener("click",closeModal);
+document.getElementById("modal-cancel").addEventListener("click",closeModal);
+document.getElementById("modal-save").addEventListener("click",saveHabit);
+document.getElementById("habit-name").addEventListener("keydown",e=>{ if(e.key==="Enter") saveHabit(); });
+document.getElementById("modal").addEventListener("click",e=>{ if(e.target===document.getElementById("modal")) closeModal(); });
+document.getElementById("theme-toggle").addEventListener("click",()=>{
+  dark=!dark;
+  localStorage.setItem(LS_DARK,dark);
+  applyTheme();
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+load();
+applyTheme();
+renderSwatches();
+renderAll();
+</script>
+</body>
+</html>
